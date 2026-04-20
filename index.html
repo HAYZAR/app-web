@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Práctica MRU - Asociación Interactiva</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f0f4f8; }
+    .scroll-container { max-height: 350px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
+    .scroll-container::-webkit-scrollbar { width: 6px; }
+    .scroll-container::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    .option-card { transition: all 0.2s; border: 2px solid #e2e8f0; background: white; }
+    .option-card:hover { transform: translateY(-2px); border-color: #94a3b8; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+    .option-card.selected-correct { border-color: #22c55e; background: #f0fdf4; }
+    .option-card.selected-wrong { border-color: #ef4444; background: #fef2f2; }
+    .progress-step { transition: all 0.3s ease; }
+    .fade-in { animation: fadeIn 0.5s ease-in-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+  <!-- Container -->
+  <div class="w-full max-w-3xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col h-[90vh]">
+    
+    <!-- Header -->
+    <header class="bg-slate-50 p-4 border-b border-slate-200 flex justify-between items-center shrink-0">
+      <div class="flex items-center gap-2">
+        <div class="bg-blue-600 text-white p-2 rounded-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 018-8v8h8a8 8 0 11-16 0z"/><path d="M12 2.252A8.014 8.014 0 0117.748 8H12V2.252z"/></svg>
+        </div>
+        <div>
+          <h1 class="font-bold text-slate-800">Análisis MRU</h1>
+          <p class="text-xs text-slate-500">Identifica Descripción, Cálculo y Ecuación</p>
+        </div>
+      </div>
+      <div class="text-right">
+        <span class="text-xs font-semibold text-slate-500">Caso <span id="case-current">1</span> de 10</span>
+        <div class="w-24 h-2 bg-slate-200 rounded-full mt-1 overflow-hidden">
+          <div id="main-progress" class="h-full bg-blue-600 w-[10%] transition-all duration-500"></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Content Area -->
+    <main id="app-content" class="flex-1 overflow-hidden flex flex-col relative">
+      
+      <!-- Intro Screen -->
+      <div id="screen-intro" class="absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-white z-10">
+        <div class="bg-blue-100 p-4 rounded-full mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-3">Evaluación de MRU</h2>
+        <p class="text-slate-600 mb-8 max-w-md">Se te presentarán 10 gráficas de movimiento rectilíneo uniforme. Para cada una, debes identificar correctamente su <strong>descripción</strong>, su <strong>ficha de cálculo</strong> y su <strong>ecuación</strong>.</p>
+        <button id="btn-start" class="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition transform active:scale-95">
+          Iniciar Actividad
+        </button>
+      </div>
+
+      <!-- Game Screen -->
+      <div id="screen-game" class="hidden flex-1 flex flex-col overflow-y-auto">
+        
+        <!-- Graph Display -->
+        <div class="p-4 bg-slate-50 border-b border-slate-100 flex justify-center shrink-0">
+          <div class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 w-64 h-48 sm:w-80 sm:h-56 flex items-center justify-center relative">
+             <!-- Graph SVG Injection -->
+             <div id="graph-container" class="w-full h-full"></div>
+             <div class="absolute top-0 left-0 bg-slate-800 text-white text-[10px] px-2 py-0.5 rounded-br-lg rounded-tl-lg">Posición vs Tiempo</div>
+          </div>
+        </div>
+
+        <!-- Step Indicators -->
+        <div class="flex justify-center gap-2 p-3 shrink-0">
+          <div id="step-ind-desc" class="step-dot w-2 h-2 rounded-full bg-slate-300 transition-colors"></div>
+          <div id="step-ind-calc" class="step-dot w-2 h-2 rounded-full bg-slate-300 transition-colors"></div>
+          <div id="step-ind-eq" class="step-dot w-2 h-2 rounded-full bg-slate-300 transition-colors"></div>
+        </div>
+
+        <!-- Options Container -->
+        <div class="flex-1 p-4 overflow-y-auto">
+          <h3 id="step-title" class="text-sm font-bold text-slate-700 uppercase tracking-wide mb-3 ml-1">Selecciona la descripción correcta</h3>
+          
+          <div id="options-list" class="scroll-container space-y-3 pr-2 pb-4">
+            <!-- Options injected here -->
+          </div>
+        </div>
+
+        <!-- Next Button Area (appears after selection) -->
+        <div id="action-area" class="p-4 border-t border-slate-100 bg-white shrink-0 hidden">
+           <button id="btn-next-step" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-semibold rounded-lg transition shadow-md">
+             Siguiente Paso
+           </button>
+        </div>
+
+      </div>
+
+      <!-- Results Screen -->
+      <div id="screen-results" class="hidden absolute inset-0 flex flex-col items-center justify-center p-8 text-center bg-white z-20 fade-in">
+        <div class="mb-4 relative w-32 h-32 flex items-center justify-center">
+           <svg class="absolute w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+             <circle cx="50" cy="50" r="45" fill="none" stroke="#e2e8f0" stroke-width="8" />
+             <circle id="score-ring" cx="50" cy="50" r="45" fill="none" stroke="#3b82f6" stroke-width="8" stroke-dasharray="283" stroke-dashoffset="283" stroke-linecap="round" class="transition-all duration-1000 ease-out" />
+           </svg>
+           <span id="score-text" class="text-4xl font-bold text-slate-800">0.0</span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800 mb-2" id="result-title">Evaluación Finalizada</h2>
+        <p id="result-feedback" class="text-slate-600 mb-6 max-w-sm">Texto de feedback...</p>
+        
+        <button id="btn-restart" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition shadow-lg">
+          Intentar de nuevo
+        </button>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    // Data from PDF - 10 Sets
+    // Structured as: { graph: {x0, v}, desc, calc, eq }
+    const fullData = [
+      {
+        id: 1, graph: { x0: 6, v: 0 },
+        desc: "El móvil permanece en reposo. Aunque el tiempo avanza, la posición siempre es la misma. En la gráfica posición-tiempo aparece como una recta horizontal.",
+        calc: "Entre t=0 s y t=5 s, el móvil permanece en x=6 m. ∆x=6-6=0 m; v=0/5=0 m/s.",
+        eq: "x(t) = 6"
+      },
+      {
+        id: 2, graph: { x0: 0, v: 2 },
+        desc: "El móvil parte del origen y avanza uniformemente. Cada segundo recorre 2 m. La recta sube con pendiente alta y pasa por (0, 0).",
+        calc: "Entre t=1 s y t=4 s, el móvil pasa de x=2 m a x=8 m. ∆x=8-2=6 m; v=6/3=2 m/s.",
+        eq: "x(t) = 2t"
+      },
+      {
+        id: 3, graph: { x0: 11, v: -1.5 },
+        desc: "El móvil se desplaza en línea recta pero hacia posiciones menores. En 4 segundos retrocede 6 m. Su velocidad constante es negativa y de magnitud mayor que 1 m/s.",
+        calc: "Entre t=2 s y t=6 s, el móvil pasa de x=8 m a x=2 m. ∆x=2-8=-6 m; v=-6/4=-1,5 m/s.",
+        eq: "x(t) = 11 − 1,5t"
+      },
+      {
+        id: 4, graph: { x0: 2, v: 1.5 },
+        desc: "El móvil no sale del origen: parte de 2 m. En cada segundo avanza 1,5 m. La recta es ascendente y más inclinada que la de velocidad 1 m/s.",
+        calc: "Entre t=2 s y t=6 s, el móvil pasa de x=5 m a x=11 m. ∆x=11-5=6 m; v=6/4=1,5 m/s.",
+        eq: "x(t) = 2 + 1,5t"
+      },
+      {
+        id: 5, graph: { x0: 12, v: -0.75 },
+        desc: "El móvil se encuentra inicialmente muy alejado del origen y regresa de forma uniforme. Por cada segundo retrocede 0,75 m. La recta es descendente.",
+        calc: "Entre t=2 s y t=6 s, el móvil pasa de x=10,5 m a x=7,5 m. ∆x=7,5-10,5=-3 m; v=-3/4=-0,75 m/s.",
+        eq: "x(t) = 12 − 0,75t"
+      },
+      {
+        id: 6, graph: { x0: 4, v: 1 },
+        desc: "El móvil no sale del origen, sino de una posición inicial positiva. Avanza con velocidad constante de 1 m/s. Cada segundo aumenta su posición en un metro.",
+        calc: "Entre t=2 s y t=6 s, el móvil pasa de x=6 m a x=10 m. ∆x=10-6=4 m; v=4/4=1 m/s.",
+        eq: "x(t) = 4 + t"
+      },
+      {
+        id: 7, graph: { x0: 10, v: -1 },
+        desc: "El móvil parte lejos del origen y regresa con velocidad constante. Cada segundo su posición disminuye 1 m. La velocidad es negativa.",
+        calc: "Entre t=1 s y t=5 s, el móvil pasa de x=9 m a x=5 m. ∆x=5-9=-4 m; v=-4/4=-1 m/s.",
+        eq: "x(t) = 10 − t"
+      },
+      {
+        id: 8, graph: { x0: 3, v: 0.75 },
+        desc: "El móvil parte de 3 m y se aleja con rapidez uniforme, pero menos de un metro por segundo. En 4 segundos avanza 3 metros. La pendiente es positiva y fraccionaria.",
+        calc: "Entre t=2 s y t=6 s, el móvil pasa de x=4,5 m a x=7,5 m. ∆x=7,5-4,5=3 m; v=3/4=0,75 m/s.",
+        eq: "x(t) = 3 + 0,75t"
+      },
+      {
+        id: 9, graph: { x0: 9, v: -0.5 },
+        desc: "El móvil se desplaza en línea recta pero hacia posiciones menores. Retrocede lentamente con velocidad constante. Cada 2 segundos disminuye 1 m.",
+        calc: "Entre t=2 s y t=6 s, el móvil pasa de x=8 m a x=6 m. ∆x=6-8=-2 m; v=-2/4=-0,5 m/s.",
+        eq: "x(t) = 9 − 0,5t"
+      },
+      {
+        id: 10, graph: { x0: 1, v: 0.5 },
+        desc: "El móvil avanza de manera uniforme, pero lentamente. Cada 2 segundos aumenta su posición en 1 m. Su pendiente es positiva, pequeña y constante.",
+        calc: "Entre t=2 s y t=6 s, el móvil pasa de x=2 m a x=4 m. ∆x=4-2=2 m; v=2/4=0,5 m/s.",
+        eq: "x(t) = 1 + 0,5t"
+      }
+    ];
+
+    // State
+    let currentCaseIndex = 0;
+    let currentStepIndex = 0; // 0: desc, 1: calc, 2: eq
+    let score = 0;
+    let shuffledSets = [];
+    
+    const steps = ['desc', 'calc', 'eq'];
+    const stepTitles = [
+      "Selecciona la descripción correcta",
+      "Selecciona la ficha de cálculo correcta",
+      "Selecciona la ecuación del movimiento"
+    ];
+
+    // Elements
+    const els = {
+      caseCurrent: document.getElementById('case-current'),
+      mainProgress: document.getElementById('main-progress'),
+      graphContainer: document.getElementById('graph-container'),
+      optionsList: document.getElementById('options-list'),
+      stepTitle: document.getElementById('step-title'),
+      actionArea: document.getElementById('action-area'),
+      btnNext: document.getElementById('btn-next-step'),
+      screens: {
+        intro: document.getElementById('screen-intro'),
+        game: document.getElementById('screen-game'),
+        results: document.getElementById('screen-results')
+      },
+      dots: {
+        desc: document.getElementById('step-ind-desc'),
+        calc: document.getElementById('step-ind-calc'),
+        eq: document.getElementById('step-ind-eq')
+      }
+    };
+
+    // Init
+    function init() {
+      document.getElementById('btn-start').onclick = startGame;
+      document.getElementById('btn-restart').onclick = restartGame;
+      els.btnNext.onclick = nextStep;
+    }
+
+    function shuffle(array) {
+      return array.sort(() => Math.random() - 0.5);
+    }
+
+    function startGame() {
+      currentCaseIndex = 0;
+      score = 0;
+      shuffledSets = shuffle([...fullData]); // Shuffle cases
+      els.screens.intro.classList.add('hidden');
+      els.screens.results.classList.add('hidden');
+      els.screens.game.classList.remove('hidden');
+      loadCase();
+    }
+
+    function restartGame() {
+      els.screens.results.classList.add('hidden');
+      startGame();
+    }
+
+    function loadCase() {
+      currentStepIndex = 0;
+      updateHeader();
+      loadStep();
+    }
+
+    function updateHeader() {
+      els.caseCurrent.textContent = currentCaseIndex + 1;
+      const pct = ((currentCaseIndex) / 10) * 100;
+      els.mainProgress.style.width = `${pct}%`;
+    }
+
+    function loadStep() {
+      // Reset UI
+      els.actionArea.classList.add('hidden');
+      els.optionsList.innerHTML = '';
+      
+      // Update Step Title
+      els.stepTitle.textContent = stepTitles[currentStepIndex];
+
+      // Update Dots
+      const dotKeys = ['desc', 'calc', 'eq'];
+      dotKeys.forEach((key, idx) => {
+        if (idx < currentStepIndex) els.dots[key].className = 'step-dot w-2 h-2 rounded-full bg-green-500';
+        else if (idx === currentStepIndex) els.dots[key].className = 'step-dot w-2 h-2 rounded-full bg-blue-600';
+        else els.dots[key].className = 'step-dot w-2 h-2 rounded-full bg-slate-300';
+      });
+
+      // Show Graph if it's the first step of the case
+      if (currentStepIndex === 0) {
+        drawGraph(shuffledSets[currentCaseIndex].graph);
+      }
+
+      // Prepare Options
+      const currentSet = shuffledSets[currentCaseIndex];
+      const correctValue = currentSet[steps[currentStepIndex]];
+      
+      // Get distractors
+      const distractors = fullData
+        .map(d => d[steps[currentStepIndex]])
+        .filter(val => val !== correctValue);
+      
+      const options = shuffle([correctValue, ...shuffle(distractors).slice(0, 2)]); // 1 correct + 2 distractors
+
+      // Render Options
+      options.forEach((opt, idx) => {
+        const el = document.createElement('div');
+        el.className = 'option-card p-4 rounded-xl cursor-pointer relative';
+        el.dataset.val = opt;
+        el.dataset.isCorrect = (opt === correctValue);
+        
+        // Format content
+        let html = '';
+        if (steps[currentStepIndex] === 'eq') {
+          html = `<div class="text-lg font-mono font-semibold text-slate-800">${opt}</div>`;
+        } else if (steps[currentStepIndex] === 'calc') {
+          html = `<div class="text-sm font-mono text-slate-700 leading-snug">${opt}</div>`;
+        } else {
+          html = `<p class="text-sm text-slate-700 leading-snug">${opt}</p>`;
+        }
+        el.innerHTML = html;
+        
+        el.onclick = () => handleSelection(el, opt === correctValue);
+        els.optionsList.appendChild(el);
+      });
+    }
+
+    function drawGraph(params) {
+      // SVG Generation
+      // Viewbox: t[0, 8], x[0, 16]
+      // We map t=0..8 to X=0..250, x=0..16 to Y=200..0 (inverted for SVG)
+      const w = 300, h = 200;
+      const tMax = 8, xMax = 16;
+      
+      const scaleT = w / tMax;
+      const scaleX = h / xMax;
+
+      // Points
+      const p1x = 0 * scaleT;
+      const p1y = h - (params.x0 * scaleX);
+      const p2x = tMax * scaleT;
+      const p2y = h - ((params.x0 + params.v * tMax) * scaleX);
+
+      // Grid lines
+      let gridLines = '';
+      // Vertical (time)
+      for(let i=0; i<=4; i++) {
+        let x = i * (w/4);
+        gridLines += `<line x1="${x}" y1="0" x2="${x}" y2="${h}" stroke="#e2e8f0" stroke-width="1"/>`;
+        gridLines += `<text x="${x}" y="${h+15}" font-size="10" fill="#94a3b8" text-anchor="middle">${i*2}</text>`;
+      }
+      // Horizontal (pos)
+      for(let i=0; i<=4; i++) {
+        let y = h - i * (h/4);
+        gridLines += `<line x1="0" y1="${y}" x2="${w}" y2="${y}" stroke="#e2e8f0" stroke-width="1"/>`;
+        gridLines += `<text x="-5" y="${y+3}" font-size="10" fill="#94a3b8" text-anchor="end">${i*4}</text>`;
+      }
+
+      // Axes
+      gridLines += `<line x1="0" y1="${h}" x2="${w}" y2="${h}" stroke="#94a3b8" stroke-width="2"/>`;
+      gridLines += `<line x1="0" y1="0" x2="0" y2="${h}" stroke="#94a3b8" stroke-width="2"/>`;
+
+      // Axis labels
+      gridLines += `<text x="${w/2}" y="${h+30}" font-size="12" fill="#64748b" font-weight="bold">t (s)</text>`;
+      gridLines += `<text x="-20" y="${h/2}" font-size="12" fill="#64748b" font-weight="bold" transform="rotate(-90, -20, ${h/2})">x (m)</text>`;
+
+      // Data Line
+      els.graphContainer.innerHTML = `
+        <svg viewBox="-30 -10 ${w+30} ${h+40}" class="w-full h-full">
+          ${gridLines}
+          <line x1="${p1x}" y1="${p1y}" x2="${p2x}" y2="${p2y}" stroke="#2563eb" stroke-width="4" stroke-linecap="round"/>
+          <!-- Start point -->
+          <circle cx="${p1x}" cy="${p1y}" r="4" fill="#1e40af"/>
+        </svg>
+      `;
+    }
+
+    function handleSelection(el, isCorrect) {
+      // Prevent double click
+      if (els.optionsList.classList.contains('locked')) return;
+      els.optionsList.classList.add('locked');
+
+      if (isCorrect) {
+        score++;
+        el.classList.add('selected-correct');
+        el.innerHTML += `<span class="absolute top-2 right-2 text-green-600 font-bold">✓</span>`;
+      } else {
+        el.classList.add('selected-wrong');
+        el.innerHTML += `<span class="absolute top-2 right-2 text-red-500 font-bold">✗</span>`;
+        // Show correct one
+        const correctEl = Array.from(els.optionsList.children).find(c => c.dataset.isCorrect === 'true');
+        if (correctEl) {
+          correctEl.classList.add('selected-correct');
+          correctEl.innerHTML += `<span class="absolute top-2 right-2 text-green-600 font-bold">✓</span>`;
+        }
+      }
+
+      // Disable clicks
+      Array.from(els.optionsList.children).forEach(c => c.style.pointerEvents = 'none');
+
+      // Show next button
+      els.actionArea.classList.remove('hidden');
+      els.btnNext.textContent = (currentStepIndex < 2) ? "Siguiente Paso" : "Siguiente Caso";
+    }
+
+    function nextStep() {
+      if (currentStepIndex < 2) {
+        currentStepIndex++;
+        loadStep();
+      } else {
+        if (currentCaseIndex < 9) {
+          currentCaseIndex++;
+          loadCase();
+        } else {
+          showResults();
+        }
+      }
+    }
+
+    function showResults() {
+      els.screens.game.classList.add('hidden');
+      els.screens.results.classList.remove('hidden');
+      
+      const finalScore = (score / 30) * 5; // 3 steps * 10 cases = 30 total points possible. Scale to 5.
+      const roundedScore = Math.round(finalScore * 10) / 10;
+      
+      // Animate Score
+      document.getElementById('score-text').textContent = roundedScore.toFixed(1);
+      
+      // Ring animation
+      const ring = document.getElementById('score-ring');
+      const circumference = 2 * Math.PI * 45; // ~283
+      const offset = circumference - (finalScore / 5) * circumference;
+      setTimeout(() => {
+        ring.style.strokeDashoffset = offset;
+        if(roundedScore >= 4) ring.style.stroke = '#22c55e';
+        else if(roundedScore >= 3) ring.style.stroke = '#eab308';
+        else ring.style.stroke = '#ef4444';
+      }, 100);
+
+      // Feedback
+      const titleEl = document.getElementById('result-title');
+      const feedbackEl = document.getElementById('result-feedback');
+      
+      if (roundedScore >= 4.5) {
+        titleEl.textContent = "¡Sobresaliente!";
+        feedbackEl.textContent = "Dominas perfectamente la asociación de gráficas, descripciones y ecuaciones en el MRU.";
+      } else if (roundedScore >= 4.0) {
+        titleEl.textContent = "¡Muy Bien!";
+        feedbackEl.textContent = "Tienes un excelente manejo del MRU. Repasa los detalles de los casos con velocidad negativa para perfeccionarte.";
+      } else if (roundedScore >= 3.0) {
+        titleEl.textContent = "Buen Trabajo";
+        feedbackEl.textContent = "Comprendes los conceptos básicos. Te sugiero revisar cómo la pendiente de la gráfica representa la velocidad.";
+      } else {
+        titleEl.textContent = "Continúa Practicando";
+        feedbackEl.textContent = "El MRU requiere más práctica. Recuerda: x(t) = x₀ + vt, donde v es la pendiente de la gráfica posición-tiempo.";
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>
+
